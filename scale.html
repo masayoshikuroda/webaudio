@@ -1,0 +1,85 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="ja">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+</head>
+
+<h1>Scale calc</h1>
+
+<form>
+    <input type="number" value="440" step="10" onchange="setFreq(this.value);"></input>
+    <button type="button" onclick="onCalcClick()">Scale</button>
+    <button type="button" onclick="onScaleButtonClick()">Scale</button>
+</form>
+
+<h3>Live Output</h3>
+<div id="output" class="output">
+    <div id="content"></div>
+    <div id="status"></div>
+    <pre id="log"></pre>
+</div>
+
+<script>
+    function log(line) {
+        document.querySelector('#log').textContent += line + '\n';
+        console.log(line);
+    }
+
+    function info(message) {
+        log(message);
+    }
+
+    function err(e) {
+        log('Argh! ' + e);
+        log(e.stack);
+    }
+
+    var f = 440
+    function setFreq(value) {
+        f = value;
+    }
+
+    const FREQ = 27.5;
+    const FACTOR = Math.pow(2, 1 / 12);
+    const SCALE = ["ラ", "ラ#", "シ ", "ド", "ド#", "レ", "レ#", "ミ", "ファ", "ソb","ソ ", "ソ#", "ラ"];
+    //const SCALE = ["A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A"]
+    function calcBaseFrequency(freq) {
+        var base = FREQ;
+        while (true) {
+            if (2 * base > freq) {
+                break;
+            }
+            base = 2 * base;
+        }
+        return base;
+    }
+
+    function calcScale(base, freq) {
+        for (var i = 0; i < 12; i++) {
+            var f0 = base * Math.pow(FACTOR, i);
+            var f1 = base * Math.pow(FACTOR, i + 1);
+            if (f1 > freq) {
+                var f0d = Math.abs(freq - f0);
+                var f1d = Math.abs(f1 - freq);
+                return f1d >= f0d ? SCALE[i] : SCALE[i + 1];
+            }
+        }
+    }
+
+    function onCalcClick() {
+        info(f + "Hz は、")
+        var base = calcBaseFrequency(f);
+        var scale = calcScale(base, f);
+        info(scale);
+    }
+
+    async function onScaleButtonClick() {
+        for (var i = 0; i < 12; i++) {
+            var f = FREQ * Math.pow(FACTOR, i);
+            info(SCALE[i] + ": " + f.toFixed(3));
+        }
+    }
+</script>
+
+</html>

@@ -1,0 +1,91 @@
+<h1>WebAudio test</h1>
+<button type="button" onclick="onEnumerateClick()">Devices</button>
+<button type="button" onclick="onStartButtonClick()">Start recording</button>
+<button type="button" onclick="onStopButtonClick()">Stop recording</button>
+<h3>Live Output</h3>
+<div id="output" class="output">
+  <div id="content"></div>
+  <div id="status"></div>
+  <pre id="log"></pre>
+</div>
+
+<script>
+var audioContext = null;
+
+function sleep(ms) {
+    console.log('Sleeping ' + ms + ' milisecond...');
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function log(line) {
+    document.querySelector('#log').textContent += line + '\n';
+    console.log(line);
+}
+
+async function onEnumerateClick() {
+    var devices = await navigator.mediaDevices.enumerateDevices();
+    for (var i = 0;  i<devices.length;  i++) {
+        var device = devices[i];
+        log('deviceId: ' + device['deviceId']);
+        log('kind    : ' + device['kind']);
+        log('label   : ' + device['label']);
+        log('groupId : ' + device['groupId']);
+    }
+}
+
+async function onStartButtonClick() {
+    try {
+        context = new (window.AudioContext || window.webkitAudioContext)();
+        log('audioContext created!');
+
+        var stream = await navigator.mediaDevices.getUserMedia({audio: true})
+        log('stream created!');
+
+        var source = context.createMediaStreamSource(stream);
+        log('mediastreamsource created!');
+
+        var analyser = context.createAnalyser();
+        analyser.fftSize = 2048; 
+        var bufferLength = analyser.frequencyBinCount;
+        
+        log('analyser created!');
+
+        source.connect(context.destination);
+        source.connect(analyser);
+        log('source connected!');
+
+        var frequency = new Float32Array(bufferLength);
+        //analyser.getByteTimeDomainData(data);
+        for(var i = 0; i < bufferLength; i++) {
+            frequency[i] = i * 44100.0 / analyser.fftSize
+        }  
+        log(frequency.slice(10, 30));
+
+        var data = new Uint8Array(bufferLength);
+        setInterval(function() {
+            analyser.getByteFrequencyData(data);
+            //log(data.slice(10, 30));
+            var sum = data.reduce((a,x)=>a+=x, 0);
+            log(sum);
+        }, 100);
+
+
+    } catch(error) {
+        log('Argh! ' + error);
+        log(error.stack);
+    }
+}
+
+
+async function onStopButtonClick() {
+    try {
+        context.close();
+        context = null;
+    } catch(error) {
+        log('Argh! ' + error);
+        log(error.stack);
+    }
+}
+
+</script>
+

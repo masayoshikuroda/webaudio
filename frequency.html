@@ -1,0 +1,142 @@
+<h1>WebAudio Analyzer Frequency Data test</h1>
+
+<form>
+    <button type="button" onclick="onStartButtonClick()">Start</button>
+    <button type="button" onclick="onStopButtonClick()">Stop</button>
+</form>
+
+<h3>Live Output</h3>
+<div id="output" class="output">
+    <div id="content"></div>
+    <div id="status"></div>
+    <pre id="log"></pre>
+</div>
+
+<script>
+
+    function sleep(ms) {
+        console.log('Sleeping ' + ms + ' milisecond...');
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function status(status) {
+        document.querySelector('#status').textContent = status;
+    }
+
+    function log(line) {
+        document.querySelector('#log').textContent += line + '\n';
+        console.log(line);
+    }
+
+    function info(message) {
+        log(message);
+    }
+
+    function err(e) {
+        log('Argh! ' + e);
+        log(e.stack);
+    }
+
+    const FREQ = 27.5;
+    const FACTOR = Math.pow(2, 1 / 12);
+    //const SCALE = ["ラ", "ラ#", "シ ", "ド", "ド#", "レ", "レ#", "ミ", "ファ", "ソb","ソ ", "ソ#", "ラ"];
+    const SCALE = ["A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A"]
+    function calcBaseFrequency(freq) {
+        var base = FREQ;
+        while (true) {
+            if (2 * base > freq) {
+                break;
+            }
+            base = 2 * base;
+        }
+        return base;
+    }
+
+    function calcScale(base, freq) {
+        for (var i = 0; i < 12; i++) {
+            var f0 = base * Math.pow(FACTOR, i);
+            var f1 = base * Math.pow(FACTOR, i + 1);
+            if (f1 > freq) {
+                var f0d = Math.abs(freq - f0);
+                var f1d = Math.abs(f1 - freq);
+                return f1d >= f0d ? SCALE[i] : SCALE[i + 1];
+            }
+        }
+    }
+    
+    function getScale(freq) {
+        var base = calcBaseFrequency(freq);
+        var scale = calcScale(base, freq);
+        return scale;
+    }
+
+    var context = null;
+    var timer = null;
+
+    function drawContext(xvalue, data) {
+        var text = "";
+        for(i=0; i < data.length; i++) {
+            value = data[i];
+            value += 100;
+            value = parseInt(value);
+            text += xvalue[i].toFixed(2);
+            text += "Hz, ";
+            text += getScale(xvalue[i]) + ": ";
+            text += '*'.repeat(Math.max(0, value)) + '\n';
+        }
+        document.querySelector('#log').textContent = text;
+    }
+
+    function clearContext() {
+        document.querySelector('#log').textContent = "";
+    }
+
+    async function onStartButtonClick() {
+        try {
+            context = new (window.AudioContext || window.webkitAudioContext)();
+            info('Audio Context created!');
+
+            var stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+            info('Stream created!');
+
+            var source = context.createMediaStreamSource(stream);
+            info('Media Stream Source created.');
+
+            var analyser = context.createAnalyser();
+            analyser.fftSize = 2048;
+            var bufferLength = analyser.frequencyBinCount;
+            info('Analyser created.');
+
+            //source.connect(context.destination);
+            source.connect(analyser);
+            log('Connect source -> analyser.');
+
+            var frequency = new Float32Array(bufferLength);
+            //analyser.getByteTimeDomainData(data);
+            for (var i = 0; i < bufferLength; i++) {
+                frequency[i] = i * 44100.0 / analyser.fftSize
+            }
+
+            var data = new Float32Array(bufferLength);
+            timer = setInterval(function () {
+                analyser.getFloatFrequencyData(data);
+                drawContext(frequency.slice(0, 100), data.slice(0, 100));
+                var sum = data.reduce((a, x) => a += x, 0);
+                status(sum);
+            }, 100);
+        } catch (e) {
+            err(e);
+        }
+    }
+
+    async function onStopButtonClick() {
+        try {
+            clearInterval(timer);
+            context.close();
+            clearContext();
+        } catch (e) {
+            err(e);
+        }
+    }
+
+</script>

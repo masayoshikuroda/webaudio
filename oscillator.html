@@ -1,0 +1,105 @@
+<h1>WebAudio Oscillator test</h1>
+
+<form>
+    <label>Frequency:</label>
+    <input type="number" value="440" step="10" onchange="setFrequency(this.value);"></input>Hz
+    <label>Type:</label>
+    <select onchange="setType(this.value);">
+        <option>sine</option>
+        <option>square</option>
+        <option>sawtooth</option>
+        <option>triangle</option>
+        <option>custom</option>
+    </select>
+    <label>Gain:</label>
+    <input type="number" value="0.1" step="0.1" onchange="setGain(this.value);"></input>
+    <button type="button" onclick="onStartButtonClick()">Start</button>
+    <button type="button" onclick="onStopButtonClick()">Stop</button>
+</form>
+
+<h3>Live Output</h3>
+<div id="output" class="output">
+    <div id="content"></div>
+    <div id="status"></div>
+    <pre id="log"></pre>
+</div>
+
+<script>
+    var context = null;
+    var oscillatorNode = null;
+    var frequency = 440; // Hz
+    var type = "sine";
+    var gain = 0.1;
+
+    function sleep(ms) {
+        console.log('Sleeping ' + ms + ' milisecond...');
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function log(line) {
+        document.querySelector('#log').textContent += line + '\n';
+        console.log(line);
+    }
+
+    function info(message) {
+        log(message);
+    }
+
+    function err(e) {
+        log('Argh! ' + e);
+        log(e.stack);
+    }
+
+    function setFrequency(value) {
+        frequency = value;
+        info("Set frequency: " + value);
+    }
+
+    function setType(value) {
+        type = value;
+        info("Set type: " + value);       
+    }
+
+    function setGain(value) {
+        gain = value;
+        info("Set gain: " + value);
+    }
+
+    async function onStartButtonClick() {
+        try {
+            context = new (window.AudioContext || window.webkitAudioContext)();
+            info('Audio context created.');
+
+            oscillatorNode = context.createOscillator();
+            oscillatorNode.frequency.value = frequency;
+            oscillatorNode.type = type;
+            info('Oscillator node created.');
+
+            var gainNode = context.createGain();
+            gainNode.gain.value = gain;
+            info('Gain node created.');
+
+            oscillatorNode.connect(gainNode);
+            gainNode.connect(context.destination);
+            info('Connect oscillator -> gain -> destination');
+
+            oscillatorNode.start(0);
+            info('Start oscilattor.');
+        } catch (e) {
+            err(e);
+        }
+    }
+
+    async function onStopButtonClick() {
+        try {
+            oscillatorNode.stop();
+            info('Stop oscilattor.');
+
+            context.close();
+            context = null;
+            info('Close context.');
+        } catch (e) {
+            err(e);
+        }
+    }
+</script>

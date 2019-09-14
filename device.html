@@ -1,0 +1,52 @@
+<h1>WebAudio Device test</h1>
+
+<form>
+    <button type="button" onclick="onEnumerateClick()">Devices</button>
+</form>
+
+<h3>Live Output</h3>
+<div id="output" class="output">
+    <div id="content"></div>
+    <div id="status"></div>
+    <pre id="log"></pre>
+</div>
+
+<script>
+
+    function sleep(ms) {
+        console.log('Sleeping ' + ms + ' milisecond...');
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function log(line) {
+        document.querySelector('#log').textContent += line + '\n';
+        console.log(line);
+    }
+
+    function info(message) {
+        log(message);
+    }
+
+    function err(e) {
+        log('Argh! ' + e);
+        log(e.stack);
+    }
+
+    async function onEnumerateClick() {
+        try {
+            var devices = await navigator.mediaDevices.enumerateDevices();
+            devices.forEach(device => {dumpDevice(device)});
+        } catch (e) {
+            err(e);
+        }
+    }
+
+    function dumpDevice(device) {
+        info('deviceId: ' + device['deviceId']);
+        info('kind    : ' + device['kind']);
+        info('label   : ' + device['label']);
+        info('groupId : ' + device['groupId']);
+        info("");
+    }
+
+</script>
